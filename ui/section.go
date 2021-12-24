@@ -11,17 +11,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type section struct {
-	Id        int
-	Config    config.SectionConfig
-	Prs       []PullRequest
-	Spinner   sectionSpinner
-	Paginator paginator.Model
+type SectionConfig struct {
+	Title string
+	Query string
 }
 
-type sectionSpinner struct {
-	Model           spinner.Model
-	NumReposFetched int
+type section struct {
+	Id        int
+	Config    SectionConfig
+	Prs       []PullRequest
+	Spinner   spinner.Model
+	Paginator paginator.Model
 }
 
 type tickMsg struct {
@@ -38,29 +38,21 @@ func (section *section) Tick(spinnerTickCmd tea.Cmd) func() tea.Msg {
 	}
 }
 
-func (section *section) fetchSectionPullRequests() []tea.Cmd {
-	var cmds []tea.Cmd
-	for _, repo := range section.Config.Repos {
-		repo := repo
-		cmds = append(cmds, func() tea.Msg {
-			fetched, err := fetchRepoPullRequests(repo, section.Config.Filters)
-			if err != nil {
-				return repoPullRequestsFetchedMsg{
-					SectionId: section.Id,
-					RepoName:  repo,
-					Prs:       []PullRequest{},
-				}
-			}
-
-			return repoPullRequestsFetchedMsg{
+func (section *section) fetchSectionPullRequests() tea.Cmd {
+	return func() tea.Msg {
+		fetched, err := fetchPullRequestsSearchQuery(section.Config.Query)
+		if err != nil {
+			return PullRequestsFetchedMsg{
 				SectionId: section.Id,
-				RepoName:  repo,
-				Prs:       fetched,
+				Prs:       []PullRequest{},
 			}
-		})
-	}
+		}
 
-	return cmds
+		return PullRequestsFetchedMsg{
+			SectionId: section.Id,
+			Prs:       fetched,
+		}
+	}
 }
 
 func (m Model) makeRenderPullRequestCmd(sectionId int) tea.Cmd {
@@ -74,10 +66,8 @@ func (m Model) makeRenderPullRequestCmd(sectionId int) tea.Cmd {
 
 func (section *section) renderLoadingState() string {
 	return fmt.Sprintf(
-		"%s %d/%d fetched...\n",
-		section.Spinner.Model.View(),
-		section.Spinner.NumReposFetched,
-		len(section.Config.Repos),
+		"%s fetching...\n",
+		section.Spinner.View(),
 	)
 }
 
@@ -128,10 +118,10 @@ func (m Model) renderTableHeader() string {
 
 func (m Model) renderPullRequestList() string {
 	section := m.getCurrSection()
-	isLoading := section.Spinner.NumReposFetched < len(section.Config.Repos)
-	if isLoading {
-		return section.renderLoadingState() + "\n"
-	}
+	// isLoading := section.Spinner.NumReposFetched < len(section.Config.Repos)
+	// if isLoading {
+	// 	return section.renderLoadingState() + "\n"
+	// }
 
 	if len(section.Prs) == 0 {
 		return renderEmptyState() + "\n"

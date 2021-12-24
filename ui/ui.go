@@ -18,7 +18,7 @@ import (
 type Model struct {
 	keys     utils.KeyMap
 	err      error
-	configs  []config.SectionConfig
+	configs  []SectionConfig
 	data     *[]section
 	viewport viewport.Model
 	cursor   cursor
@@ -33,7 +33,7 @@ type cursor struct {
 }
 
 type initMsg struct {
-	Config []config.SectionConfig
+	Config []SectionConfig
 }
 
 type errMsg struct {
@@ -60,9 +60,15 @@ func NewModel(logFile *os.File) Model {
 }
 
 func initScreen() tea.Msg {
-	sections, err := config.ParseSectionsConfig()
-	if err != nil {
-		return errMsg{err}
+	var sections = []SectionConfig{
+		{
+			Title: "Created",
+			Query: "is:open is:pr author:@me archived:false",
+		},
+		{
+			Title: "Assigned to me",
+			Query: "is:open is:pr archived:false assignee:@me sort:updated-desc",
+		},
 	}
 
 	return initMsg{Config: sections}
@@ -144,26 +150,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			data = append(data, section{
 				Id:      i,
 				Config:  sectionConfig,
-				Spinner: sectionSpinner{Model: s, NumReposFetched: 0},
+				Spinner: s,
 			})
 		}
 		m.data = &data
 		return m, m.startFetchingSectionsData()
 
-	case repoPullRequestsFetchedMsg:
+	case PullRequestsFetchedMsg:
 		section := (*m.data)[msg.SectionId]
 		section.Prs = append(section.Prs, msg.Prs...)
 		sort.Slice(section.Prs, func(i, j int) bool {
 			return section.Prs[i].UpdatedAt.After(section.Prs[j].UpdatedAt)
 		})
-
-		section.Spinner.NumReposFetched += 1
 		(*m.data)[msg.SectionId] = section
 		return m, m.makeRenderPullRequestCmd(msg.SectionId)
 
 	case pullRequestsRenderedMsg:
 		section := (*m.data)[msg.sectionId]
-		section.Spinner.Model.Finish()
+		section.Spinner.Finish()
 		(*m.data)[msg.sectionId] = section
 		m.viewport.SetContent(msg.content)
 		return m, nil
@@ -171,7 +175,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		var internalCmd tea.Cmd
 		section := (*m.data)[msg.SectionId]
-		section.Spinner.Model, internalCmd = section.Spinner.Model.Update(msg.InternalTickMsg)
+		section.Spinner, internalCmd = section.Spinner.Update(msg.InternalTickMsg)
 		(*m.data)[msg.SectionId] = section
 		return m, section.Tick(internalCmd)
 
@@ -208,10 +212,6 @@ func (m Model) View() string {
 		return m.err.Error()
 	}
 
-	if m.configs == nil {
-		return "Reading config...\n"
-	}
-
 	paddedContentStyle := lipgloss.NewStyle().
 		PaddingLeft(mainContentPadding).
 		PaddingRight(mainContentPadding)
@@ -231,7 +231,7 @@ func (m Model) startFetchingSectionsData() tea.Cmd {
 	var cmds []tea.Cmd
 	for _, section := range *m.data {
 		section := section
-		cmds = append(cmds, section.fetchSectionPullRequests()...)
+		cmds = append(cmds, section.fetchSectionPullRequests())
 		cmds = append(cmds, section.Tick(spinner.Tick))
 	}
 	return tea.Batch(cmds...)

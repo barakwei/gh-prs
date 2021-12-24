@@ -17,20 +17,20 @@ const (
 )
 
 type PullRequest struct {
-	Number            int
-	Title             string
-	Author            Author
-	UpdatedAt         time.Time
-	Url               string
-	State             string
-	Mergeable         string
-	ReviewDecision    string
-	Additions         int
-	Deletions         int
-	HeadRefName       string
-	HeadRepository    Repository
-	IsDraft           bool
-	StatusCheckRollup []StatusCheck
+	Number           int
+	Title            string
+	Author           Author
+	UpdatedAt        time.Time
+	Url              string
+	State            string
+	Mergeable        string
+	ReviewDecision   string
+	Additions        int
+	Deletions        int
+	HeadRefName      string
+	Repository       Repository
+	IsDraft          bool
+	StatusCheckState string
 }
 
 type Author struct {
@@ -38,8 +38,8 @@ type Author struct {
 }
 
 type Repository struct {
-	Id   string
-	Name string
+	NameWithOwner string
+	Name          string
 }
 
 type StatusCheck struct {
@@ -54,32 +54,78 @@ type StatusCheck struct {
 	TargetUrl   string
 }
 
-type repoPullRequestsFetchedMsg struct {
+type PullRequestsFetchedMsg struct {
 	SectionId int
-	RepoName  string
 	Prs       []PullRequest
 }
 
-func fetchRepoPullRequests(repo string, search string) ([]PullRequest, error) {
+func fetchPullRequestsSearchQuery(query string) ([]PullRequest, error) {
+	const jqFilter = `[.data.search.edges[] | (. * .node) | (del(.node)) | (. * (.commits.nodes[].commit.statusCheckRollup | .["statusCheckState"] = .state | del(.state))) | del(.commits)]`
+	const queryTemplate = `query={
+  search(query: "%s", type: ISSUE, first: 30) {
+    issueCount
+    edges {
+      node {
+        ... on PullRequest {
+          number
+          title
+          author {
+            login
+          }
+		  repository {
+			name
+			nameWithOwner
+		  }
+          url
+          isDraft
+          mergeable
+          additions
+          deletions
+          baseRefName
+          headRefName
+          reviewDecision
+          state
+          updatedAt
+          commits(last: 1) {
+            nodes {
+              commit {
+                statusCheckRollup {
+                  state
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
+
+	var k = fmt.Sprintf("gh api graphql --paginate -f %s", fmt.Sprintf(queryTemplate, query))
+	fmt.Println(k)
+
 	out, err := exec.Command(
+		//"echo",
 		"gh",
-		"pr",
-		"list",
-		"--repo",
-		repo,
-		"--json",
-		JsonFields,
-		"--search",
-		search,
-		"--limit",
-		Limit,
+		"api",
+		"graphql",
+		"--paginate",
+		"--jq",
+		jqFilter,
+		"-f",
+		fmt.Sprintf(queryTemplate, query),
 	).Output()
+
+	f, _ := os.Create("command")
+	f.Write(out)
+	f.Close()
 
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
-	prs := []PullRequest{}
+	var prs []PullRequest
 	if err := json.Unmarshal(out, &prs); err != nil {
 		log.Fatal(err)
 		return nil, err
@@ -116,23 +162,12 @@ func (pr PullRequest) renderMergeableStatus(isSelected bool) string {
 }
 
 func (pr PullRequest) renderCiStatus(isSelected bool) string {
-	accStatus := "SUCCESS"
 	ciCellStyle := makeRuneCellStyle(isSelected).Width(ciCellWidth)
-	for _, statusCheck := range pr.StatusCheckRollup {
-		if statusCheck.State == "FAILURE" {
-			accStatus = "FAILURE"
-			break
-		}
-
-		if statusCheck.State == "PENDING" {
-			accStatus = "PENDING"
-		}
-	}
-	if accStatus == "SUCCESS" {
+	if pr.StatusCheckState == "SUCCESS" {
 		return ciCellStyle.Foreground(lipgloss.Color("42")).Render("")
 	}
 
-	if accStatus == "PENDING" {
+	if pr.StatusCheckState == "PENDING" {
 		return ciCellStyle.Foreground(lipgloss.Color("214")).Render("")
 	}
 
@@ -177,7 +212,7 @@ func (pr PullRequest) renderAuthor(isSelected bool) string {
 func (pr PullRequest) renderRepoName(isSelected bool) string {
 	return makeCellStyle(isSelected).
 		Width(prRepoCellWidth).
-		Render(fmt.Sprintf("%-20s", utils.TruncateString(pr.HeadRepository.Name, 20)))
+		Render(fmt.Sprintf("%-20s", utils.TruncateString(pr.Repository.Name, 20)))
 }
 
 func (pr PullRequest) renderUpdateAt(isSelected bool) string {
