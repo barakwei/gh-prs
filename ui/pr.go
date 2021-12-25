@@ -232,7 +232,6 @@ func renderSelectionPointer(isSelected bool) string {
 func (pr PullRequest) render(isSelected bool, viewPortWidth int) string {
 	selectionPointerCell := renderSelectionPointer(isSelected)
 	reviewCell := pr.renderReviewStatus(isSelected)
-	mergeableCell := pr.renderMergeableStatus(isSelected)
 	ciCell := pr.renderCiStatus(isSelected)
 	linesCell := pr.renderLines(isSelected)
 	prTitleCell := pr.renderTitle(viewPortWidth, isSelected)
@@ -248,7 +247,6 @@ func (pr PullRequest) render(isSelected bool, viewPortWidth int) string {
 			selectionPointerCell,
 			reviewCell,
 			prTitleCell,
-			mergeableCell,
 			ciCell,
 			linesCell,
 			prAuthorCell,
