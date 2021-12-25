@@ -1,4 +1,4 @@
-module github.com/dlvhdr/gh-prs
+module gh-prs
 
 go 1.17
 

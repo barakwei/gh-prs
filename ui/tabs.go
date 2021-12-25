@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"dlvhdr/gh-prs/utils"
+	"gh-prs/utils"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"

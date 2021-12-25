@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"dlvhdr/gh-prs/utils"
 	"encoding/json"
 	"fmt"
+	"gh-prs/utils"
 	"log"
 	"os/exec"
 	"time"

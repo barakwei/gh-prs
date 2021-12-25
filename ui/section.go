@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"dlvhdr/gh-prs/config"
 	"fmt"
 	"strings"
 

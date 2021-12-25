@@ -1,8 +1,7 @@
 package ui
 
 import (
-	"dlvhdr/gh-prs/config"
-	"dlvhdr/gh-prs/utils"
+	"gh-prs/utils"
 	"os"
 	"sort"
 	"strings"

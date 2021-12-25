@@ -8,7 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"dlvhdr/gh-prs/ui"
+	"gh-prs/ui"
 )
 
 func createModel(debug bool) (ui.Model, *os.File) {
