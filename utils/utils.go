@@ -28,7 +28,7 @@ func OpenPullRequestInBrowser(repoWithOwner string, number int) {
 }
 
 func CheckoutPR(id int) {
-	checkoutCmd := exec.Command("gh", "pr", "checkout", strconv.Itoa(id))
+	checkoutCmd := exec.Command("gh", "pr", "checkout", strconv.Itoa(id), "-f")
 	checkoutCmd.Stdin = os.Stdin
 	checkoutCmd.Stdout = os.Stdout
 	checkoutCmd.Stderr = os.Stderr
