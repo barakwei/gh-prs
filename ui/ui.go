@@ -121,7 +121,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			currPR := m.getCurrSection().Prs[m.cursor.currPrId]
-			utils.OpenBrowser(currPR.Url)
+			utils.OpenPullRequestInBrowser(currPR.Repository.NameWithOwner, currPR.Number)
 			return m, nil
 
 		case key.Matches(msg, m.keys.Checkout):
