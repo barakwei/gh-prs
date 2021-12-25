@@ -117,10 +117,6 @@ func fetchPullRequestsSearchQuery(query string) ([]PullRequest, error) {
 		fmt.Sprintf(queryTemplate, query),
 	).Output()
 
-	f, _ := os.Create("command")
-	f.Write(out)
-	f.Close()
-
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
