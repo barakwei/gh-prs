@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-repo="dlvhdr/gh-prs"
+repo="barakwei/gh-prs"
 
 extensionPath="$(dirname "$0")"
 arch="$(uname -m)"
